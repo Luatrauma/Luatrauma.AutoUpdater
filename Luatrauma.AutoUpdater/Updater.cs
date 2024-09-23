@@ -24,22 +24,25 @@ namespace Luatrauma.AutoUpdater
             }
         }
 
-        public async static Task Update()
+        public async static Task Update(bool serverOnly = false)
         {
             Logger.Log("Starting update...");
 
             string patchUrl = null;
             if (OperatingSystem.IsWindows())
             {
-                patchUrl = "https://github.com/evilfactory/LuaCsForBarotrauma/releases/download/latest/luacsforbarotrauma_patch_windows_client.zip";
+                if (serverOnly) { patchUrl = "https://github.com/evilfactory/LuaCsForBarotrauma/releases/download/latest/luacsforbarotrauma_patch_windows_server.zip"; }
+                else { patchUrl = "https://github.com/evilfactory/LuaCsForBarotrauma/releases/download/latest/luacsforbarotrauma_patch_windows_client.zip"; }
             }
             else if (OperatingSystem.IsLinux())
             {
-                patchUrl = "https://github.com/evilfactory/LuaCsForBarotrauma/releases/download/latest/luacsforbarotrauma_patch_linux_client.zip";
+                if (serverOnly) { patchUrl = "https://github.com/evilfactory/LuaCsForBarotrauma/releases/download/latest/luacsforbarotrauma_patch_linux_server.zip"; }
+                else { patchUrl = "https://github.com/evilfactory/LuaCsForBarotrauma/releases/download/latest/luacsforbarotrauma_patch_linux_client.zip"; }
             }
             else if (OperatingSystem.IsMacOS())
             {
-                patchUrl = "https://github.com/evilfactory/LuaCsForBarotrauma/releases/download/latest/luacsforbarotrauma_patch_mac_client.zip";
+                if (serverOnly) { patchUrl = "https://github.com/evilfactory/LuaCsForBarotrauma/releases/download/latest/luacsforbarotrauma_patch_mac_server.zip"; }
+                else { patchUrl = "https://github.com/evilfactory/LuaCsForBarotrauma/releases/download/latest/luacsforbarotrauma_patch_mac_client.zip"; }
             }
 
             if (patchUrl == null)
@@ -91,19 +94,25 @@ namespace Luatrauma.AutoUpdater
 
             Logger.Log($"Applying patch...");
 
+            string dllFile = "Barotrauma.dll";
+            if (serverOnly)
+            {
+                dllFile = "DedicatedServer.dll";
+            }
+
             // Verify that the dll version is the same as the current one
-            string currentDll = Path.Combine(Directory.GetCurrentDirectory(), "Barotrauma.dll");
-            string newDll = Path.Combine(extractionFolder, "Barotrauma.dll");
+            string currentDll = Path.Combine(Directory.GetCurrentDirectory(), dllFile);
+            string newDll = Path.Combine(extractionFolder, dllFile);
 
             if (!File.Exists(currentDll))
             {
-                Logger.Log("Failed to find the current Barotrauma.dll", ConsoleColor.Red);
+                Logger.Log($"Failed to find the current {dllFile}", ConsoleColor.Red);
                 return;
             }
 
             if (!File.Exists(newDll))
             {
-                Logger.Log("Failed to find the new Barotrauma.dll", ConsoleColor.Red);
+                Logger.Log($"Failed to find the new {dllFile}", ConsoleColor.Red);
                 return;
             }
 

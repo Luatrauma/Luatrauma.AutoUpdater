@@ -24,17 +24,28 @@ namespace Luatrauma.AutoUpdater
 
         public async static Task Start()
         {
-            await Updater.Update();
+            List<string> args = new List<string>(Args);
 
-            if (Args.Length > 0)
+            bool serverOnly = false;
+
+            int index = args.FindIndex(x => x == "--server-only");
+            if (index != -1)
             {
-                Logger.Log("Starting " + string.Join(" ", Args));
+                args.RemoveAt(index);
+                serverOnly = true;
+            }
+
+            await Updater.Update(serverOnly);
+
+            if (args.Count > 0)
+            {
+                Logger.Log("Starting " + string.Join(" ", args));
 
                 var info = new ProcessStartInfo
                 {
-                    FileName = Args[0],
-                    Arguments = string.Join(" ", Args.Skip(1)),
-                    WorkingDirectory = Path.GetDirectoryName(Args[0]),
+                    FileName = args[0],
+                    Arguments = string.Join(" ", args.Skip(1)),
+                    WorkingDirectory = Path.GetDirectoryName(args[0]),
                 };
 
                 Process.Start(info);
