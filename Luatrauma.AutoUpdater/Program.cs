@@ -1,11 +1,10 @@
 ﻿using System.Diagnostics;
+using System.CommandLine;
 
 namespace Luatrauma.AutoUpdater
 {
     internal class Program
     {
-        public static string[] Args;
-
         static void Main(string[] args)
         {
             string tempFolder = Path.Combine(Directory.GetCurrentDirectory(), "Luatrauma.AutoUpdater.Temp");
@@ -16,40 +15,38 @@ namespace Luatrauma.AutoUpdater
                 Logger.Log("Unhandled exception: " + e.ExceptionObject);
             };
 
-            Args = args;
+            var rootCommand = new RootCommand("Luatrauma AutoUpdater");
 
-            Task task = Start();
-            task.Wait();
-        }
+            var optionServerOnly = new Option<bool>(name: "--server-only", description: "Downloads only the client patch.");
+            optionServerOnly.SetDefaultValue(false);
+            var optionNightly = new Option<bool>(name: "--nightly", description: "Downloads the nightly patch.");
+            optionNightly.SetDefaultValue(false);
+            var argumentRun = new Argument<string?>("run", "The path to the Barotrauma executable that should be ran after the update finishes.");
+            argumentRun.SetDefaultValue(null);
 
-        public async static Task Start()
-        {
-            List<string> args = new List<string>(Args);
+            rootCommand.AddArgument(argumentRun);
+            rootCommand.AddOption(optionServerOnly);
+            rootCommand.AddOption(optionNightly);
 
-            bool serverOnly = false;
-
-            int index = args.FindIndex(x => x == "--server-only");
-            if (index != -1)
+            rootCommand.SetHandler(async (string? runExe, bool serverOnly, bool nightly) =>
             {
-                args.RemoveAt(index);
-                serverOnly = true;
-            }
+                await Updater.Update(serverOnly);
 
-            await Updater.Update(serverOnly);
-
-            if (args.Count > 0)
-            {
-                Logger.Log("Starting " + string.Join(" ", args));
-
-                var info = new ProcessStartInfo
+                if (runExe != null)
                 {
-                    FileName = args[0],
-                    Arguments = string.Join(" ", args.Skip(1)),
-                    WorkingDirectory = Path.GetDirectoryName(args[0]),
-                };
+                    Logger.Log("Starting " + string.Join(" ", runExe));
 
-                Process.Start(info);
-            }
+                    var info = new ProcessStartInfo
+                    {
+                        FileName = runExe,
+                        WorkingDirectory = Path.GetDirectoryName(runExe)
+                    };
+
+                    Process.Start(info);
+                }
+            }, argumentRun, optionServerOnly, optionNightly);
+
+            rootCommand.Invoke(args);
         }
     }
 }

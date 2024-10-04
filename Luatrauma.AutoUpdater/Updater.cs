@@ -24,25 +24,29 @@ namespace Luatrauma.AutoUpdater
             }
         }
 
-        public async static Task Update(bool serverOnly = false)
+        public async static Task Update(bool nightly = false, bool serverOnly = false)
         {
             Logger.Log("Starting update...");
 
-            string patchUrl = null;
+            string patchUrl = "https://github.com/evilfactory/LuaCsForBarotrauma/releases/download/latest/";
+            if (nightly)
+            {
+                patchUrl = "https://github.com/evilfactory/LuaCsForBarotrauma/releases/download/nightly/";
+            }
             if (OperatingSystem.IsWindows())
             {
-                if (serverOnly) { patchUrl = "https://github.com/evilfactory/LuaCsForBarotrauma/releases/download/latest/luacsforbarotrauma_patch_windows_server.zip"; }
-                else { patchUrl = "https://github.com/evilfactory/LuaCsForBarotrauma/releases/download/latest/luacsforbarotrauma_patch_windows_client.zip"; }
+                if (serverOnly) { patchUrl += "luacsforbarotrauma_patch_windows_server.zip"; }
+                else { patchUrl += "luacsforbarotrauma_patch_windows_client.zip"; }
             }
             else if (OperatingSystem.IsLinux())
             {
-                if (serverOnly) { patchUrl = "https://github.com/evilfactory/LuaCsForBarotrauma/releases/download/latest/luacsforbarotrauma_patch_linux_server.zip"; }
-                else { patchUrl = "https://github.com/evilfactory/LuaCsForBarotrauma/releases/download/latest/luacsforbarotrauma_patch_linux_client.zip"; }
+                if (serverOnly) { patchUrl += "luacsforbarotrauma_patch_linux_server.zip"; }
+                else { patchUrl += "luacsforbarotrauma_patch_linux_client.zip"; }
             }
             else if (OperatingSystem.IsMacOS())
             {
-                if (serverOnly) { patchUrl = "https://github.com/evilfactory/LuaCsForBarotrauma/releases/download/latest/luacsforbarotrauma_patch_mac_server.zip"; }
-                else { patchUrl = "https://github.com/evilfactory/LuaCsForBarotrauma/releases/download/latest/luacsforbarotrauma_patch_mac_client.zip"; }
+                if (serverOnly) { patchUrl += "luacsforbarotrauma_patch_mac_server.zip"; }
+                else { patchUrl += "luacsforbarotrauma_patch_mac_client.zip"; }
             }
 
             if (patchUrl == null)
