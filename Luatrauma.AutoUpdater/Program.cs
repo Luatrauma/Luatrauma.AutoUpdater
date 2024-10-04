@@ -28,9 +28,9 @@ namespace Luatrauma.AutoUpdater
             rootCommand.AddOption(optionServerOnly);
             rootCommand.AddOption(optionNightly);
 
-            rootCommand.SetHandler(async (string? runExe, bool serverOnly, bool nightly) =>
+            rootCommand.SetHandler(async (string? runExe, bool nightly, bool serverOnly) =>
             {
-                await Updater.Update(serverOnly);
+                await Updater.Update(nightly, serverOnly);
 
                 if (runExe != null)
                 {
@@ -44,7 +44,7 @@ namespace Luatrauma.AutoUpdater
 
                     Process.Start(info);
                 }
-            }, argumentRun, optionServerOnly, optionNightly);
+            }, argumentRun, optionNightly, optionServerOnly);
 
             rootCommand.Invoke(args);
         }
