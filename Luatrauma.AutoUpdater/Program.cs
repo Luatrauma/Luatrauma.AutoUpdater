@@ -17,7 +17,6 @@ namespace Luatrauma.AutoUpdater
                 var ex = e.ExceptionObject as Exception;
                 string exString = ex?.ToString() ?? e.ExceptionObject.ToString()!;
                 Logger.Log($"Unhandled exception: {exString}");
-                Console.ReadKey();
             };
 
             var rootCommand = new RootCommand("Luatrauma AutoUpdater");
