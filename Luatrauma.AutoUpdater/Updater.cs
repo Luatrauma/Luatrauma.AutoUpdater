@@ -34,7 +34,7 @@ namespace Luatrauma.AutoUpdater
             return response.Headers.ETag?.Tag;
         }
 
-        public async static Task Update(bool nightly = false, bool serverOnly = false)
+        public async static Task Update(bool nightly = false, bool serverOnly = false, bool forceWindows = false)
         {
             Logger.Log("Starting update...");
 
@@ -43,7 +43,7 @@ namespace Luatrauma.AutoUpdater
             {
                 patchUrl = "https://github.com/evilfactory/LuaCsForBarotrauma/releases/download/nightly/";
             }
-            if (OperatingSystem.IsWindows())
+            if (OperatingSystem.IsWindows() || forceWindows)
             {
                 if (serverOnly) { patchUrl += "luacsforbarotrauma_patch_windows_server.zip"; }
                 else { patchUrl += "luacsforbarotrauma_patch_windows_client.zip"; }
@@ -58,12 +58,13 @@ namespace Luatrauma.AutoUpdater
                 if (serverOnly) { patchUrl += "luacsforbarotrauma_patch_mac_server.zip"; }
                 else { patchUrl += "luacsforbarotrauma_patch_mac_client.zip"; }
             }
-
-            if (patchUrl == null)
+            else
             {
                 Logger.Log("Unsupported operating system.");
                 return;
             }
+            
+            Logger.Log($"{nameof(patchUrl)} = {patchUrl}");
 
             string tempFolder = Path.Combine(Directory.GetCurrentDirectory(), "Luatrauma.AutoUpdater.Temp");
             string patchZip = Path.Combine(tempFolder, "patch.zip");
@@ -73,18 +74,18 @@ namespace Luatrauma.AutoUpdater
 
             string? remoteEtag = await GetRemoteETag(patchUrl);
             string? localEtag = File.Exists(etagFile) ? await File.ReadAllTextAsync(etagFile) : null;
+            
+            Logger.Log($"{nameof(remoteEtag)} = {remoteEtag}");
+            Logger.Log($"{nameof(localEtag)}  = {localEtag}");
 
-            if (false && remoteEtag != null && remoteEtag == localEtag)
+            bool skippedDownload = false;
+            if (remoteEtag is not null && remoteEtag == localEtag)
             {
+                skippedDownload = true;
                 Logger.Log("Patch has not changed. Skipping download.");
             }
             else
             {
-                if (remoteEtag != null)
-                {
-                    await File.WriteAllTextAsync(etagFile, remoteEtag);
-                }
-
                 Logger.Log($"Downloading patch zip from {patchUrl}");
 
                 try
@@ -102,33 +103,76 @@ namespace Luatrauma.AutoUpdater
                 }
 
                 Logger.Log($"Downloaded patch zip to {patchZip}");
-            }
-
-            try
-            {
-                if (Directory.Exists(extractionFolder))
+                
+                if (remoteEtag is not null)
                 {
-                    Directory.Delete(extractionFolder, true);
+                    await File.WriteAllTextAsync(etagFile, remoteEtag);
                 }
-                Directory.CreateDirectory(extractionFolder);
-
-                ZipFile.ExtractToDirectory(patchZip, extractionFolder, true);
-
             }
-            catch (Exception e)
-            {
-                Logger.Log($"Failed to extract patch zip: {e.Message}");
-                return;
-            }
-
-            Logger.Log($"Extracted patch zip to {Directory.GetCurrentDirectory()}");
-
-            Logger.Log($"Applying patch...");
 
             string dllFile = "Barotrauma.dll";
             if (serverOnly)
             {
                 dllFile = "DedicatedServer.dll";
+            }
+            
+            Logger.Log($"Applying patch...");
+
+            string extractEtagFilePath = Path.Combine(tempFolder, "extract.etag");
+            try
+            {
+                if (!skippedDownload)
+                {
+                    throw new Exception();
+                }
+                if (!Directory.Exists(extractionFolder))
+                {
+                    throw new Exception();
+                }
+
+                string? extractEtag = File.Exists(extractEtagFilePath) ? await File.ReadAllTextAsync(extractEtagFilePath) : null;
+
+                Logger.Log($"{nameof(remoteEtag)}  = {remoteEtag}");
+                Logger.Log($"{nameof(extractEtag)} = {extractEtag}");
+
+                if (extractEtag is null || extractEtag != remoteEtag)
+                {
+                    throw new Exception();
+                }
+
+                Logger.Log("Files inside the patch zip is already extracted to the extraction folder. New extraction skipped.");
+            }
+            catch (Exception)
+            {
+                Logger.Log("Existing files inside the extraction folder are outdated or simply non-existing. Performing new extraction...");
+                
+                if (Directory.Exists(extractionFolder))
+                {
+                    Directory.Delete(extractionFolder, true);
+                }
+
+                Directory.CreateDirectory(extractionFolder);
+
+                try
+                {
+                    ZipFile.ExtractToDirectory(patchZip, extractionFolder, true);
+                }
+                catch (Exception e)
+                {
+                    Logger.Log($"Failed to extract patch zip: {e.Message}");
+                    return;
+                }
+
+                if (remoteEtag is not null)
+                {
+                    await File.WriteAllTextAsync(extractEtagFilePath, remoteEtag);
+                }
+                else
+                {
+                    File.Delete(extractEtagFilePath);
+                }
+
+                Logger.Log($"Extracted patch zip to {extractionFolder}");
             }
 
             // Verify that the dll version is the same as the current one
@@ -150,8 +194,11 @@ namespace Luatrauma.AutoUpdater
             // Grab the version of the current dll
             var currentVersion = FileVersionInfo.GetVersionInfo(currentDll);
             var newVersion = FileVersionInfo.GetVersionInfo(newDll);
+            
+            Logger.Log($"current ddl version: {currentVersion.FileVersion}");
+            Logger.Log($"new ddl version:     {newVersion.FileVersion}");
 
-            if (currentVersion == null || newVersion == null)
+            if (currentVersion.FileVersion is null || newVersion.FileVersion is null)
             {
                 Logger.Log("Failed to get version info for the dlls");
                 return;
@@ -172,9 +219,31 @@ namespace Luatrauma.AutoUpdater
                 return;
             }
 
-            CopyFilesRecursively(extractionFolder, Directory.GetCurrentDirectory());
+            string applyEtagFilePath = Path.Combine(tempFolder, "apply.etag");
+            string? applyEtag = File.Exists(applyEtagFilePath) ? await File.ReadAllTextAsync(applyEtagFilePath) : null;
+            
+            Logger.Log($"{nameof(remoteEtag)} = {remoteEtag}");
+            Logger.Log($"{nameof(applyEtag)}  = {applyEtag}");
+            
+            if (applyEtag is not null && applyEtag == remoteEtag)
+            {
+                Logger.Log("Game is already modded with the latest patch. Patch skipped.");
+            }
+            else
+            {
+                CopyFilesRecursively(extractionFolder, Directory.GetCurrentDirectory());
 
-            Logger.Log("Patch applied.");
+                Logger.Log("Patch applied.");
+
+                if (remoteEtag is not null)
+                {
+                    await File.WriteAllTextAsync(applyEtagFilePath, remoteEtag);
+                }
+                else
+                {
+                    File.Delete(applyEtagFilePath);
+                }
+            }
 
             if (File.Exists("luacsversion.txt")) // Workshop stuff, get rid of it so it doesn't interfere
             {
