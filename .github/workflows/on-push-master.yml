@@ -3,6 +3,7 @@
 name: On push to master branch
 
 on:
+  workflow_dispatch: 
   push:
     branches: [master]
     paths-ignore:
