@@ -34,9 +34,42 @@ namespace Luatrauma.AutoUpdater
             return response.Headers.ETag?.Tag;
         }
 
+        private static readonly Version LastSupportedGameVersion = new Version(1, 13, 5, 0);
+
+        private const string ObsoleteMessage = "Installing LuaCsForBarotrauma through the Steam launch options is no longer supported and can be removed from your launch options. " +
+            "Instead, LuaCsForBarotrauma is now installed directly through the Steam Workshop. To install it, simply find the mod on the workshop, subscribe to it and enable it on your mod list.";
+
+        private static bool IsLaunchParameterMethodObsolete(bool serverOnly)
+        {
+            string dllFile = serverOnly ? "DedicatedServer.dll" : "Barotrauma.dll";
+            string currentDll = Path.Combine(Directory.GetCurrentDirectory(), dllFile);
+
+            if (!File.Exists(currentDll)) { return false; }
+
+            var info = FileVersionInfo.GetVersionInfo(currentDll);
+            var gameVersion = new Version(info.FileMajorPart, info.FileMinorPart, info.FileBuildPart, info.FilePrivatePart);
+
+            if (gameVersion <= LastSupportedGameVersion) { return false; }
+
+            Logger.Log($"Game version {gameVersion} is above {LastSupportedGameVersion}, skipping patch.", ConsoleColor.Yellow);
+            Logger.Log(ObsoleteMessage, ConsoleColor.Yellow);
+
+            if (!serverOnly)
+            {
+                Popup.Show("LuaCsForBarotrauma", ObsoleteMessage);
+            }
+
+            return true;
+        }
+
         public async static Task Update(bool nightly = false, bool serverOnly = false)
         {
             Logger.Log("Starting update...");
+
+            if (IsLaunchParameterMethodObsolete(serverOnly))
+            {
+                return;
+            }
 
             string patchUrl = "https://github.com/evilfactory/LuaCsForBarotrauma/releases/download/latest/";
             if (nightly)
