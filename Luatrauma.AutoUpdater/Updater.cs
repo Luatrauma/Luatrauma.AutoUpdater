@@ -60,6 +60,12 @@ namespace Luatrauma.AutoUpdater
 
             if (Directory.Exists(localModFolder))
             {
+                if (!File.Exists(Path.Combine(localModFolder, "filelist.xml")))
+                {
+                    Logger.Log($"Failed to remove previous install at {localModFolder}: something went terribly wrong with the paths.", ConsoleColor.Red);
+                    return true;
+                }
+
                 try
                 {
                     Directory.Delete(localModFolder, true);
