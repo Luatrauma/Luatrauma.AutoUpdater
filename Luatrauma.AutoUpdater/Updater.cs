@@ -36,8 +36,8 @@ namespace Luatrauma.AutoUpdater
 
         private static readonly Version LastSupportedGameVersion = new Version(1, 13, 5, 0);
 
-        private const string ObsoleteMessage = "LuaCsForBarotrauma is now installed through the Steam Workshop, so you can remove it from your Steam launch options. " +
-            "To keep using it, subscribe to the mod on the Workshop and enable it in your mod list.";
+        private const string ObsoleteMessage = "You are using the Steam launch option install method for LuaCsForBarotrauma, but this install method is now obsolete. \n\n" +
+            "Please remove the launch option. LuaCsForBarotrauma is now installed directly through the workshop. To do so, simply navigate to the steam workshop, search for the mod, subscribe to it and enable it in your mod list. No further actions needed.";
 
         private static bool IsLaunchParameterMethodObsolete(bool serverOnly)
         {
@@ -55,6 +55,7 @@ namespace Luatrauma.AutoUpdater
             Logger.Log(ObsoleteMessage, ConsoleColor.Yellow);
 
 
+            // delete previous installation to prevent issues from arising from it
             string localModFolder = Path.Combine(Directory.GetCurrentDirectory(), "LocalMods", "LuaCsForBarotrauma");
 
             if (Directory.Exists(localModFolder))
